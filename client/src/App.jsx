@@ -4,6 +4,7 @@ import { Toaster } from "react-hot-toast";
 import HomePage from "@/Pages/home";
 import RoomJoinPage from "@/Pages/room-join";
 import CreateRoomPage from "@/Pages/create-room";
+import RoomPage from "@/Pages/room";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/join" element={<RoomJoinPage />} />
         <Route path="/create" element={<CreateRoomPage />} />
+        <Route path="/room/:roomCode" element={<RoomPage />} />
       </Routes>
       <Toaster />
     </div>

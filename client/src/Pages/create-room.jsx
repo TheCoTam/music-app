@@ -39,12 +39,12 @@ const CreateRoomPage = () => {
     if (res && "error" in res) {
       toast.error(res.error);
     } else {
-      console.log(res);
+      navigate(`/room/${res.code}`);
     }
   };
 
   return (
-    <div className="flex flex-col gap-3 items-center justify-center w-[500px] py-8 bg-rose-100 rounded-lg">
+    <div className="flex flex-col gap-3 items-center justify-center w-[500px] py-8 bg-rose-100 rounded-lg shadow-md">
       <p className="text-3xl font-bold mb-[40px]">Create A Room</p>
       <Form {...form}>
         <form
