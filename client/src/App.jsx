@@ -7,7 +7,7 @@ import CreateRoomPage from "@/Pages/create-room";
 
 function App() {
   return (
-    <div>
+    <div className="min-h-[100vh] bg-blue-100 flex items-center justify-center">
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/join" element={<RoomJoinPage />} />
