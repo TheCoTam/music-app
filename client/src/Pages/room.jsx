@@ -1,3 +1,4 @@
+import SettingRoom from "@/components/setting-room";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
 import { useEffect, useState } from "react";
@@ -10,7 +11,7 @@ axios.defaults.withCredentials = true;
 const RoomPage = () => {
   const navigate = useNavigate();
   const { roomCode } = useParams();
-  const [room, setRoom] = useState({});
+  const [room, setRoom] = useState(null);
 
   useEffect(() => {
     async function getRoomDetail() {
@@ -43,14 +44,30 @@ const RoomPage = () => {
   };
 
   return (
-    <div className="space-y-2">
-      <p className="text-3xl font-bold">Code: {room.code}</p>
-      <p>Votes: {room.votes_to_skip}</p>
-      <p>Guest Can Pause: {room.guest_can_pause?.toString()}</p>
-      <p>Host: {room.is_host?.toString()}</p>
+    <div className="flex flex-col gap-2 items-center">
+      <p className="text-3xl font-bold">Code: {room?.code}</p>
+      <div className="flex space-x-3">
+        <p className="font-semibold">Votes:</p>
+        <p>{room?.votes_to_skip}</p>
+      </div>
+      <div className="flex space-x-3">
+        <p className="font-semibold">Guest Can Pause:</p>
+        <p>{room?.guest_can_pause?.toString()}</p>
+      </div>
+      <div className="flex space-x-3">
+        <p className="font-semibold">Host:</p>
+        <p>{room?.is_host?.toString()}</p>
+      </div>
+      {room && (
+        <SettingRoom
+          guest_can_pause={room.guest_can_pause}
+          votes_to_skip={room.votes_to_skip}
+          code={room.code}
+        />
+      )}
       <Button
         variant="destructive"
-        className="uppercase"
+        className="uppercase w-max "
         onClick={handleLeaveRoom}
       >
         leave room
