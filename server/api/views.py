@@ -4,15 +4,17 @@ from rest_framework.views import APIView
 from django.http import JsonResponse
 
 from .models import Room
-from .serializers import RoomSerializer, CreateRoomSerializer
+from .serializers import RoomSerializer, CreateRoomSerializer, UpdateRoomSerializer
 
 
 # Create your views here.
+# API view all room in database
 class RoomView(generics.ListAPIView):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
 
 
+# API get room detail according to room code from client
 class GetRoom(APIView):
     serializer_class = RoomSerializer
     lookup_url_kwarg = 'code'
@@ -32,6 +34,7 @@ class GetRoom(APIView):
         return Response({'Bad request': 'Code parameter not found in request'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# API take room code from client and set last room current user join to that room code
 class JoinRoom(APIView):
     lookup_url_kwarg = 'code'
 
@@ -54,6 +57,7 @@ class JoinRoom(APIView):
                         status=status.HTTP_400_BAD_REQUEST)
 
 
+# API create a new room and set the last room current user join to new created room
 class CreateRoomView(APIView):
     serializer_class = CreateRoomSerializer
 
@@ -86,6 +90,7 @@ class CreateRoomView(APIView):
         return Response({'Bad request': 'Invalid data'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+# API get room code that current user last join
 class UserInRoom(APIView):
     def get(self, request, format=None):
         if not self.request.session.exists(self.request.session.session_key):
@@ -98,6 +103,7 @@ class UserInRoom(APIView):
         return JsonResponse(data, status=status.HTTP_200_OK)
 
 
+# API leave room and delete room if leaver is host's room
 class LeaveRoom(APIView):
     def post(self, request, format=None):
         if 'room_code' in self.request.session:
@@ -112,6 +118,7 @@ class LeaveRoom(APIView):
         return Response({'message': 'Success'}, status=status.HTTP_200_OK)
 
 
+# API delete room with room code from client
 class DeleteRoom(APIView):
     lookup_url_kwarg = 'code'
 
@@ -127,3 +134,37 @@ class DeleteRoom(APIView):
             return Response({'message': 'Room deleted'}, status=status.HTTP_200_OK)
 
         return Response({'message': 'Room Code not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+# API update infomation of a certain room
+class UpdateRoom(APIView):
+    serializer_class = UpdateRoomSerializer
+
+    def patch(self, request, format=None):
+        if not self.request.session.session_key:
+            self.request.session.create()
+
+        serializer = self.serializer_class(data=request.data)
+        if not serializer.is_valid():
+            return Response({'message': 'Invalid data'}, status=status.HTTP_400_BAD_REQUEST)
+
+        guest_can_pause = serializer.data.get('guest_can_pause')
+        votes_to_skip = serializer.data.get('votes_to_skip')
+        code = serializer.data.get('code')
+
+        queryset = Room.objects.filter(code=code)
+
+        if not queryset.exists():
+            return Response({'message': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        room = queryset[0]
+
+        if room.host != self.request.session.session_key:
+            return Response({'message': 'Unauthorize'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        room.guest_can_pause = guest_can_pause
+        room.votes_to_skip = votes_to_skip
+
+        room.save(update_fields=['guest_can_pause', 'votes_to_skip'])
+
+        return Response({'message': 'Room updated', 'data': RoomSerializer(room).data}, status=status.HTTP_200_OK)
