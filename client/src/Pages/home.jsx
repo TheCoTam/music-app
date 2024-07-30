@@ -2,23 +2,22 @@ import axios from "axios";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
+axios.defaults.withCredentials = true;
+const url = import.meta.env.VITE_API_URL;
+
 const HomePage = () => {
   const navigate = useNavigate();
   const [roomCode, setRoomCode] = useState(null);
 
   useEffect(() => {
     async function fetchData() {
-      axios.defaults.withCredentials = true;
-      const url = import.meta.env.VITE_API_URL;
       const response = await axios.get(url + "/api/user-in-room");
       setRoomCode(response.data.code);
     }
 
     fetchData();
   }, []);
-  console.log(roomCode);
   if (roomCode) {
-    console.log("redirecting to room");
     navigate(`/room/${roomCode}`);
   }
 
