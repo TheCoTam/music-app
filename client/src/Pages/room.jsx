@@ -8,6 +8,7 @@ const RoomPage = () => {
 
   useEffect(() => {
     async function getRoomDetail() {
+      axios.defaults.withCredentials = true;
       const url = import.meta.env.VITE_API_URL;
       const response = await axios.get(url + `/api/get-room?code=${roomCode}`);
       setRoom(response.data);

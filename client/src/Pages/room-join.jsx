@@ -31,9 +31,16 @@ const RoomJoinPage = () => {
   const onSubmit = async (values) => {
     const url = import.meta.env.VITE_API_URL;
     try {
-      const response = await axios.post(url + "/api/join-room", {
+      axios.defaults.withCredentials = true;
+      const res = await axios.post(url + "/api/join-room", {
         code: values.roomCode,
       });
+
+      console.log(res);
+
+      const test = await axios.get(url + "/api/user-in-room");
+      console.log(test.data);
+
       navigate(`/room/${values.roomCode}`);
     } catch (error) {
       if (error.response.status === 404) {
