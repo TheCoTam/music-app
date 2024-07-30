@@ -96,3 +96,34 @@ class UserInRoom(APIView):
         }
 
         return JsonResponse(data, status=status.HTTP_200_OK)
+
+
+class LeaveRoom(APIView):
+    def post(self, request, format=None):
+        if 'room_code' in self.request.session:
+            code = self.request.session.pop('room_code')
+            host_id = self.request.session.session_key
+            room_results = Room.objects.filter(host=host_id)
+
+            if len(room_results) > 0:
+                room = room_results[0]
+                room.delete()
+
+        return Response({'message': 'Success'}, status=status.HTTP_200_OK)
+
+
+class DeleteRoom(APIView):
+    lookup_url_kwarg = 'code'
+
+    def delete(self, request, format=None):
+        code = request.data.get(self.lookup_url_kwarg)
+        if code is None:
+            return Response({'message': 'Invalid data'}, status=status.HTTP_400_BAD_REQUEST)
+
+        room_results = Room.objects.filter(code=code)
+        if len(room_results):
+            room = room_results[0]
+            room.delete()
+            return Response({'message': 'Room deleted'}, status=status.HTTP_200_OK)
+
+        return Response({'message': 'Room Code not found'}, status=status.HTTP_404_NOT_FOUND)
