@@ -1,3 +1,4 @@
+import MusicPlayer from "@/components/music-player";
 import SettingRoom from "@/components/setting-room";
 import { Button } from "@/components/ui/button";
 import axios from "axios";
@@ -12,6 +13,7 @@ const RoomPage = () => {
   const navigate = useNavigate();
   const { roomCode } = useParams();
   const [room, setRoom] = useState(null);
+  const [song, setSong] = useState(null);
 
   async function getRoomDetail() {
     try {
@@ -28,10 +30,14 @@ const RoomPage = () => {
   }
 
   useEffect(() => {
+    async function fetchCurrentSong() {
+      const response = await axios.get(url + "/spotify/current-song");
+      setSong(response.data);
+    }
+
     async function auth() {
       try {
         const response = await axios.get(url + "/spotify/is-authenticated");
-
         if (!response.data.status) {
           const fetchAuthUrl = await axios.get(url + "/spotify/get-auth-url");
           const authUrl = fetchAuthUrl.data.url;
@@ -46,7 +52,11 @@ const RoomPage = () => {
     }
 
     auth();
-  }, [roomCode]);
+
+    const interval = setInterval(fetchCurrentSong, 1000);
+
+    return () => clearInterval(interval);
+  }, [roomCode, song]);
 
   const handleLeaveRoom = async () => {
     try {
@@ -73,6 +83,8 @@ const RoomPage = () => {
         <p className="font-semibold">Host:</p>
         <p>{room?.is_host?.toString()}</p>
       </div>
+      {!song && <div>No playing Song</div>}
+      {song && <MusicPlayer {...song} />}
       {room && (
         <SettingRoom
           guest_can_pause={room.guest_can_pause}
