@@ -73,8 +73,8 @@ class CurrentSong(APIView):
         item = response.get('item')
         song_id = item.get('id')
         duration = item.get('duration_ms')
-        is_playing = item.get('is_playing')
-        album_cover = item.get('album').get('images')[0].get('url')
+        is_playing = response.get('is_playing')
+        album_cover = item.get('album').get('images')[1].get('url')
         progress = response.get('progress_ms')
 
         artist_string = ""
@@ -97,3 +97,35 @@ class CurrentSong(APIView):
         }
 
         return Response(song, status=status.HTTP_200_OK)
+
+
+class PauseSong(APIView):
+    def put(self, request, format=None):
+        room_code = self.request.session.get('room_code')
+        rooms = Room.objects.filter(code=room_code)
+
+        if not rooms.exists():
+            return Response({'message': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        room = rooms[0]
+        if self.request.session.session_key == room.host or room.guest_can_pause:
+            pause_song(room.host)
+            return Response({'message': 'Song Paused'}, status=status.HTTP_204_NO_CONTENT)
+
+        return Response({'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class PlaySong(APIView):
+    def put(self, request, format=None):
+        room_code = self.request.session.get('room_code')
+        rooms = Room.objects.filter(code=room_code)
+
+        if not rooms.exists():
+            return Response({'message': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        room = rooms[0]
+        if self.request.session.session_key == room.host or room.guest_can_pause:
+            play_song(room.host)
+            return Response({'message': 'Song Played'}, status=status.HTTP_204_NO_CONTENT)
+
+        return Response({'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
