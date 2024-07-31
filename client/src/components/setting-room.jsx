@@ -1,6 +1,9 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
+import toast from "react-hot-toast";
+import axios from "axios";
+import { useState } from "react";
 
 import {
   Sheet,
@@ -19,10 +22,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Button } from "@/components/ui/button";
-import toast from "react-hot-toast";
-import axios from "axios";
-import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 
 const url = import.meta.env.VITE_API_URL;
 axios.defaults.withCredentials = true;
@@ -32,7 +31,12 @@ const formSchema = z.object({
   votes_to_skip: z.number().int(),
 });
 
-const SettingRoom = ({ guest_can_pause, votes_to_skip, code }) => {
+const SettingRoom = ({
+  guest_can_pause,
+  votes_to_skip,
+  code,
+  updateCallback,
+}) => {
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -40,7 +44,6 @@ const SettingRoom = ({ guest_can_pause, votes_to_skip, code }) => {
       votes_to_skip: votes_to_skip,
     },
   });
-  const navigate = useNavigate();
   const [isUpdating, setIsUpdating] = useState(false);
 
   const onSubmit = async (values) => {
@@ -54,7 +57,7 @@ const SettingRoom = ({ guest_can_pause, votes_to_skip, code }) => {
       });
 
       setIsUpdating(false);
-      navigate(0);
+      updateCallback();
       toast.success(res.data.message);
     } catch (error) {
       console.log("[setting room]", error);
