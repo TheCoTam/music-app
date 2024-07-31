@@ -13,24 +13,39 @@ const RoomPage = () => {
   const { roomCode } = useParams();
   const [room, setRoom] = useState(null);
 
+  async function getRoomDetail() {
+    try {
+      const response = await axios.get(url + `/api/get-room?code=${roomCode}`);
+      setRoom(response.data);
+    } catch (error) {
+      if (error.response.status === 404) {
+        navigate("/");
+        return;
+      }
+      console.log("[room]", error);
+      toast.error("Something went wrong");
+    }
+  }
+
   useEffect(() => {
-    async function getRoomDetail() {
+    async function auth() {
       try {
-        const response = await axios.get(
-          url + `/api/get-room?code=${roomCode}`
-        );
-        setRoom(response.data);
-      } catch (error) {
-        if (error.response.status === 404) {
-          navigate("/");
+        const response = await axios.get(url + "/spotify/is-authenticated");
+
+        if (!response.data.status) {
+          const fetchAuthUrl = await axios.get(url + "/spotify/get-auth-url");
+          const authUrl = fetchAuthUrl.data.url;
+          window.location.replace(authUrl);
           return;
         }
-        console.log("[room]", error);
-        toast.error("Something went wrong");
+
+        getRoomDetail();
+      } catch (error) {
+        console.log("[Auth-room", error);
       }
     }
 
-    getRoomDetail();
+    auth();
   }, [roomCode]);
 
   const handleLeaveRoom = async () => {
@@ -63,6 +78,7 @@ const RoomPage = () => {
           guest_can_pause={room.guest_can_pause}
           votes_to_skip={room.votes_to_skip}
           code={room.code}
+          updateCallback={getRoomDetail}
         />
       )}
       <Button
