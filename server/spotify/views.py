@@ -3,9 +3,10 @@ from rest_framework.views import APIView
 from requests import Request, post
 from rest_framework.response import Response
 from rest_framework import status
+from api.models import Room
 from .credentials import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI
 from .utils import *
-from api.models import Room
+from .models import Vote
 
 
 # Create your views here.
@@ -85,6 +86,8 @@ class CurrentSong(APIView):
             name = artist.get('name')
             artist_string += name
 
+        votes = len(Vote.objects.filter(room=room, song_id=song_id))
+
         song = {
             'id': song_id,
             'title': item.get('name'),
@@ -93,10 +96,21 @@ class CurrentSong(APIView):
             'time': progress,
             'image_url': album_cover,
             'is_playing': is_playing,
-            'votes': 0
+            'votes': votes,
+            'votes_required': room.votes_to_skip
         }
 
+        self.update_room_song(room=room, song_id=song_id)
+
         return Response(song, status=status.HTTP_200_OK)
+
+    def update_room_song(self, room, song_id):
+        current_song = room.current_song
+
+        if current_song != song_id:
+            room.current_song = song_id
+            room.save(update_fields=['current_song'])
+            votes = Vote.objects.filter(room=room).delete()
 
 
 class PauseSong(APIView):
@@ -110,7 +124,7 @@ class PauseSong(APIView):
         room = rooms[0]
         if self.request.session.session_key == room.host or room.guest_can_pause:
             pause_song(room.host)
-            return Response({'message': 'Song Paused'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'message': 'Song paused if your spotify is premium'}, status=status.HTTP_200_OK)
 
         return Response({'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -126,6 +140,57 @@ class PlaySong(APIView):
         room = rooms[0]
         if self.request.session.session_key == room.host or room.guest_can_pause:
             play_song(room.host)
-            return Response({'message': 'Song Played'}, status=status.HTTP_204_NO_CONTENT)
+            return Response({'message': 'Song played if your spotify is premium'}, status=status.HTTP_200_OK)
 
         return Response({'message': 'Unauthorized'}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+class SkipSong(APIView):
+    def post(self, request, format=None):
+        room_code = self.request.session.get('room_code')
+        rooms = Room.objects.filter(code=room_code)
+
+        if not rooms.exists():
+            return Response({'message': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        room = rooms[0]
+        votes = Vote.objects.filter(room=room, song_id=room.current_song)
+
+        # Undo skip if user already voted
+        for vote in votes:
+            if vote.user == self.request.session.session_key:
+                vote.delete()
+                return Response({'message': 'Undo skip song', 'success': False, 'voted': False},
+                                status=status.HTTP_200_OK)
+
+        # skip song if condition meet
+        votes_needed = room.votes_to_skip
+        if self.request.session.session_key == room.host or len(votes) + 1 >= votes_needed:
+            votes.delete()
+            skip_song(room.host)
+            return Response({'message': 'Song skip if your spotify is premium', 'success': True},
+                            status=status.HTTP_200_OK)
+
+        # user not vote and condition not meet => add user to votes list
+        vote = Vote(user=self.request.session.session_key, song_id=room.current_song, room=room)
+        vote.save()
+
+        return Response({'message': 'Wait another to skip this song', 'success': False, 'Voted': True},
+                        status=status.HTTP_200_OK)
+
+
+class IsGuestVote(APIView):
+    def get(self, request, format=None):
+        room_code = self.request.session.get('room_code')
+        rooms = Room.objects.filter(code=room_code)
+
+        if not rooms.exists():
+            return Response({'message': 'Room not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        room = rooms[0]
+
+        votes = Vote.objects.filter(user=self.request.session.session_key, room=room, song_id=room.current_song)
+        if not votes.exists():
+            return Response({'message': 'Guest not voted', 'voted': False}, status=status.HTTP_200_OK)
+
+        return Response({'message': 'Guest voted', 'voted': True}, status=status.HTTP_200_OK)
