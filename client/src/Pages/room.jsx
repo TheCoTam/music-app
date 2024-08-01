@@ -30,11 +30,6 @@ const RoomPage = () => {
   }
 
   useEffect(() => {
-    async function fetchCurrentSong() {
-      const response = await axios.get(url + "/spotify/current-song");
-      setSong(response.data);
-    }
-
     async function auth() {
       try {
         const response = await axios.get(url + "/spotify/is-authenticated");
@@ -52,11 +47,19 @@ const RoomPage = () => {
     }
 
     auth();
+  }, [roomCode]);
+
+  useEffect(() => {
+    async function fetchCurrentSong() {
+      if (!room) return;
+      const response = await axios.get(url + "/spotify/current-song");
+      setSong(response.data);
+    }
 
     const interval = setInterval(fetchCurrentSong, 1000);
 
     return () => clearInterval(interval);
-  }, [roomCode, song]);
+  }, [room, song]);
 
   const handleLeaveRoom = async () => {
     try {
@@ -84,7 +87,7 @@ const RoomPage = () => {
         <p>{room?.is_host?.toString()}</p>
       </div>
       {!song && <div>No playing Song</div>}
-      {song && <MusicPlayer {...song} />}
+      {song && <MusicPlayer {...song} is_host={room.is_host} />}
       {room && (
         <SettingRoom
           guest_can_pause={room.guest_can_pause}

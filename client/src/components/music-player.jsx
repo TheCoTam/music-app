@@ -1,5 +1,12 @@
-import { Pause, Play, StepForward } from "lucide-react";
+import axios from "axios";
 import toast from "react-hot-toast";
+import { Pause, Play, StepForward } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import { useEffect, useState } from "react";
+
+const url = import.meta.env.VITE_API_URL;
+axios.defaults.withCredentials = true;
 
 const MusicPlayer = ({
   title,
@@ -8,15 +15,80 @@ const MusicPlayer = ({
   time,
   image_url,
   is_playing,
+  votes,
+  votes_required,
+  is_host,
 }) => {
+  const [voted, setVoted] = useState(false);
   const songProgress = Math.round((time / duration) * 100);
 
   const iconClassName =
-    "w-4 h-4 sm:w-6 sm:h-6 md:w-10 md:h-10 hover:bg-slate-300 active:bg-slate-400 rounded-full p-1 cursor-pointer";
+    "w-5 h-5 sm:w-6 sm:h-6 md:w-10 md:h-10 hover:bg-slate-300 active:bg-slate-400 rounded-full p-1 cursor-pointer";
 
-  const handlePause = () => toast.success("Gonna Pause");
-  const handlePlay = () => toast.success("Gonna Play");
-  const handleForward = () => toast.success("Gonna Forward");
+  const handlePause = async () => {
+    try {
+      const response = await axios.put(url + "/spotify/pause");
+      toast.success(response.data.message);
+    } catch (error) {
+      if (error.data.status === 404 || error.data.status === 401) {
+        toast.error(error.data.message);
+        return;
+      }
+
+      console.log("[Pause song]", error);
+      toast.error("Something went wrong");
+    }
+  };
+
+  const handlePlay = async () => {
+    try {
+      await axios.put(url + "/spotify/play");
+      toast.success("Played if your spotify is premium");
+    } catch (error) {
+      if (error.data.status === 404 || error.data.status === 401) {
+        toast.error(error.data.message);
+        return;
+      }
+
+      console.log("[Play song]", error);
+      toast.error("Something went wrong");
+    }
+  };
+
+  const handleSkip = async () => {
+    try {
+      const response = await axios.post(url + "/spotify/next");
+
+      toast.success(response.data.message);
+      if (!response.data.success) {
+        setVoted(response.data.voted);
+      }
+    } catch (error) {
+      console.log("[Skip song]", error);
+      toast.error("Something went wrong");
+    }
+  };
+
+  useEffect(() => {
+    async function guestVoted() {
+      if (is_host) return;
+
+      try {
+        const url = import.meta.env.VITE_API_URL;
+        axios.defaults.withCredentials = true;
+
+        const response = await axios.get(url + "/spotify/guest-voted");
+
+        if (response.data.voted) {
+          setVoted(true);
+        }
+      } catch (error) {
+        console.log("[Music Player]", error);
+      }
+    }
+
+    guestVoted();
+  }, []);
 
   return (
     <div className="flex flex-col gap-3 p-5">
@@ -37,16 +109,19 @@ const MusicPlayer = ({
             ) : (
               <Play className={iconClassName} onClick={handlePlay} />
             )}
-            <StepForward className={iconClassName} onClick={handleForward} />
+            <StepForward
+              className={`${iconClassName} ${
+                !is_host && voted && "text-red-500"
+              }`}
+              onClick={handleSkip}
+            />
+            <Badge variant="secondary">
+              {votes} / {votes_required}
+            </Badge>
           </div>
         </div>
       </div>
-      <div className="h-[4px] bg-gray-400 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-blue-400"
-          style={{ width: `${songProgress}%` }}
-        ></div>
-      </div>
+      <Progress value={songProgress} />
     </div>
   );
 };
